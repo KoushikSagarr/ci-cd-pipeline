@@ -8,7 +8,7 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                git 'hhttps://github.com/KoushikSagarr/ci-cd-pipeline.git'
+                git 'https://github.com/KoushikSagarr/ci-cd-pipeline.git'
             }
         }
 
