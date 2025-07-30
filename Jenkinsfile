@@ -6,12 +6,6 @@ pipeline {
     }
 
     stages {
-        stage('Checkout Code') {
-            steps {
-                git 'https://github.com/KoushikSagarr/ci-cd-pipeline.git'
-            }
-        }
-
         stage('Install Dependencies') {
             steps {
                 dir('app') {
@@ -36,7 +30,7 @@ pipeline {
 
         stage('Docker Run (Optional)') {
             steps {
-                echo 'Optionally run and test the container here'
+                echo 'Container run can go here.'
             }
         }
     }
