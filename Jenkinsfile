@@ -9,7 +9,7 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 dir('app') {
-                    sh 'npm install'
+                    bat 'npm install'
                 }
             }
         }
@@ -23,7 +23,7 @@ pipeline {
         stage('Docker Build') {
             steps {
                 dir('app') {
-                    sh 'docker build -t $IMAGE_NAME .'
+                    bat "docker build -t %IMAGE_NAME% ."
                 }
             }
         }
