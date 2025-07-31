@@ -3,6 +3,8 @@ pipeline {
 
     environment {
         IMAGE_NAME = "ci-cd-app"
+        DOCKER_HUB_REPO = "koushiksagar/ci-cd-app"
+        DOCKER_TAG = "latest"
     }
 
     stages {
@@ -24,6 +26,15 @@ pipeline {
             steps {
                 dir('app') {
                     bat "docker build -t %IMAGE_NAME% ."
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                dir('app') {
+                    bat "docker tag %IMAGE_NAME% %DOCKER_HUB_REPO%:%DOCKER_TAG%"
+                    bat "docker push %DOCKER_HUB_REPO%:%DOCKER_TAG%"
                 }
             }
         }
