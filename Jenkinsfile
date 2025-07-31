@@ -36,11 +36,5 @@ pipeline {
                 }
             }
         }
-    stage('Docker Run') {
-    steps {
-        bat "docker run -d -p 3000:3000 %DOCKER_HUB_REPO%:%DOCKER_TAG%"
-    }
-}
-
     }
 }
