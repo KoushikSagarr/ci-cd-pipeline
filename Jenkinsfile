@@ -22,26 +22,24 @@ pipeline {
             }
         }
 
-        stage('Docker Build') {
+        stage('Docker Build & Push') {
             steps {
                 dir('app') {
-                    bat "docker build -t %IMAGE_NAME% ."
-                }
-            }
-        }
-
-        stage('Push to Docker Hub') {
-            steps {
-                dir('app') {
-                    bat "docker tag %IMAGE_NAME% %DOCKER_HUB_REPO%:%DOCKER_TAG%"
-                    bat "docker push %DOCKER_HUB_REPO%:%DOCKER_TAG%"
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        bat '''
+                        docker login -u %DOCKER_USER% -p %DOCKER_PASS%
+                        docker build -t %IMAGE_NAME% .
+                        docker tag %IMAGE_NAME% %DOCKER_HUB_REPO%:%DOCKER_TAG%
+                        docker push %DOCKER_HUB_REPO%:%DOCKER_TAG%
+                        '''
+                    }
                 }
             }
         }
 
         stage('Docker Run (Optional)') {
             steps {
-                echo 'Container run can go here.'
+                echo 'You can run the container here if needed.'
             }
         }
     }
