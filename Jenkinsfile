@@ -26,20 +26,19 @@ pipeline {
             steps {
                 dir('app') {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        bat '''
-                        docker login -u %DOCKER_USER% -p %DOCKER_PASS%
-                        docker build -t %IMAGE_NAME% .
-                        docker tag %IMAGE_NAME% %DOCKER_HUB_REPO%:%DOCKER_TAG%
-                        docker push %DOCKER_HUB_REPO%:%DOCKER_TAG%
-                        '''
+                        bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
+                        bat "docker build -t %IMAGE_NAME% ."
+                        bat "docker tag %IMAGE_NAME% %DOCKER_HUB_REPO%:%DOCKER_TAG%"
+                        bat "docker push %DOCKER_HUB_REPO%:%DOCKER_TAG%"
                     }
                 }
             }
         }
 
-        stage('Docker Run (Optional)') {
+        stage('Docker Run') {
             steps {
-                echo 'You can run the container here if needed.'
+                bat "docker pull %DOCKER_HUB_REPO%:%DOCKER_TAG%"
+                bat "docker run --rm -d -p 3000:3000 --name ci-cd-app %DOCKER_HUB_REPO%:%DOCKER_TAG%"
             }
         }
     }
