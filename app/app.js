@@ -1,6 +1,5 @@
 const express = require('express');
 const app = express();
-//hi
 app.get('/', (req, res) => {
   res.send('🚀 CI/CD App is Running!');
 });
