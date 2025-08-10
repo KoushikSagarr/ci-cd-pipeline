@@ -5,7 +5,7 @@ pipeline {
         IMAGE_NAME = "ci-cd-app"
         DOCKER_HUB_REPO = "koushiksagar/ci-cd-app"
         DOCKER_TAG = "latest"
-        BACKEND_URL = "https://481458ea85f7.ngrok-free.app/api/log-final-status" // <-- Change this to your ngrok URL
+        BACKEND_URL = "https://481458ea85f7.ngrok-free.app/api/log-final-status"
     }
 
     stages {
@@ -39,7 +39,6 @@ pipeline {
         }
     }
 
-    // This post section will run after all stages, regardless of their outcome
     post {
         always {
             script {
@@ -48,8 +47,8 @@ pipeline {
                 def jobName = env.JOB_NAME
                 def consoleLink = "${env.BUILD_URL}/console"
 
-                // This command sends the build result to your Node.js backend
-                sh "curl -X POST -H 'Content-Type: application/json' -d '{\"status\":\"${buildStatus}\", \"jobName\":\"${jobName}\", \"buildNumber\":\"${buildNumber}\", \"consoleLink\":\"${consoleLink}\"}' ${env.BACKEND_URL}"
+                // The curl command is run using bat for a Windows agent.
+                bat "curl -X POST -H 'Content-Type: application/json' -d '{\"status\":\"${buildStatus}\", \"jobName\":\"${jobName}\", \"buildNumber\":\"${buildNumber}\", \"consoleLink\":\"${consoleLink}\"}' ${env.BACKEND_URL}"
             }
         }
     }
