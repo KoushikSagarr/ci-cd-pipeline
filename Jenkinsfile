@@ -9,17 +9,8 @@ pipeline {
     }
 
     stages {
-        stage('Checkout Application Code') {
-            steps {
-                // This step checks out the application code from its dedicated repository.
-                // Replace with your actual application repository URL and credentials.
-                checkout([$class: 'GitSCM', branches: [[name: '*/main']], userRemoteConfigs: [[url: 'https://github.com/KoushikSagarr/ci-cd-dashboard']]])
-            }
-        }
-
         stage('Install Dependencies') {
             steps {
-                // The application code is now available in the workspace.
                 dir('app') {
                     bat 'npm install'
                 }
@@ -48,6 +39,7 @@ pipeline {
         }
     }
 
+    // This post section will run after all stages, regardless of their outcome
     post {
         always {
             script {
@@ -56,6 +48,7 @@ pipeline {
                 def jobName = env.JOB_NAME
                 def consoleLink = "${env.BUILD_URL}/console"
 
+                // This command sends the build result to your Node.js backend
                 sh "curl -X POST -H 'Content-Type: application/json' -d '{\"status\":\"${buildStatus}\", \"jobName\":\"${jobName}\", \"buildNumber\":\"${buildNumber}\", \"consoleLink\":\"${consoleLink}\"}' ${env.BACKEND_URL}"
             }
         }
