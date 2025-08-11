@@ -5,7 +5,7 @@ pipeline {
         IMAGE_NAME = "ci-cd-app"
         DOCKER_HUB_REPO = "koushiksagar/ci-cd-app"
         DOCKER_TAG = "latest"
-        BACKEND_URL = "https://481458ea85f7.ngrok-free.app/api/log-final-status"
+        BACKEND_URL = "https://5e3f63294371.ngrok-free.app/api/log-final-status"
     }
 
     stages {
@@ -47,8 +47,26 @@ pipeline {
                 def jobName = env.JOB_NAME
                 def consoleLink = "${env.BUILD_URL}/console"
 
-                // The curl command is run using bat for a Windows agent.
-                bat "curl -X POST -H 'Content-Type: application/json' -d '{\"status\":\"${buildStatus}\", \"jobName\":\"${jobName}\", \"buildNumber\":\"${buildNumber}\", \"consoleLink\":\"${consoleLink}\"}' ${env.BACKEND_URL}"
+                // Create a JSON object to send
+                def jsonBody = [
+                    status: buildStatus,
+                    jobName: jobName,
+                    buildNumber: buildNumber,
+                    consoleLink: consoleLink
+                ]
+
+                // Use the built-in Jenkins HTTP Request Plugin to send the payload
+                try {
+                    httpRequest(
+                        url: env.BACKEND_URL,
+                        httpMode: 'POST',
+                        contentType: 'APPLICATION_JSON',
+                        requestBody: groovy.json.JsonOutput.toJson(jsonBody)
+                    )
+                    echo "Successfully sent build status to backend."
+                } catch (e) {
+                    echo "Failed to send build status to backend: ${e}"
+                }
             }
         }
     }
