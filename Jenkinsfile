@@ -47,7 +47,6 @@ pipeline {
                 def jobName = env.JOB_NAME
                 def consoleLink = "${env.BUILD_URL}/console"
 
-                // Create a JSON object to send
                 def jsonBody = [
                     status: buildStatus,
                     jobName: jobName,
@@ -55,17 +54,26 @@ pipeline {
                     consoleLink: consoleLink
                 ]
 
-                // Use the built-in Jenkins HTTP Request Plugin to send the payload
-                try {
-                    httpRequest(
-                        url: env.BACKEND_URL,
-                        httpMode: 'POST',
-                        contentType: 'APPLICATION_JSON',
-                        requestBody: groovy.json.JsonOutput.toJson(jsonBody)
-                    )
-                    echo "Successfully sent build status to backend."
-                } catch (e) {
-                    echo "Failed to send build status to backend: ${e}"
+                // Use withCredentials to securely pass the Jenkins API token
+                // Replace 'jenkins-api-token' with the ID of your Secret Text credential
+                withCredentials([string(credentialsId: 'jenkins-api-token', variable: 'JENKINS_API_TOKEN')]) {
+                    try {
+                        httpRequest(
+                            url: env.BACKEND_URL,
+                            httpMode: 'POST',
+                            contentType: 'APPLICATION_JSON',
+                            requestBody: groovy.json.JsonOutput.toJson(jsonBody),
+                            // Add the API token to the request headers for authentication
+                            customHeaders: [
+                                [name: 'Authorization', value: "Bearer ${JENKINS_API_TOKEN}"]
+                            ],
+                            // Add a CSRF crumb to avoid a 403 error on Jenkins' end, if required
+                            validResponseCodes: '100:399' // The accepted range for valid HTTP status codes
+                        )
+                        echo "Successfully sent build status to backend."
+                    } catch (e) {
+                        echo "Failed to send build status to backend: ${e}"
+                    }
                 }
             }
         }
