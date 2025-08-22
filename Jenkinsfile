@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME      = "ci-cd-app"
+        IMAGE_NAME = "ci-cd-app"
         DOCKER_HUB_REPO = "koushiksagar/ci-cd-app"
-        DOCKER_TAG      = "latest"
+        DOCKER_TAG = "latest"
     }
 
     stages {
@@ -27,20 +27,13 @@ pipeline {
                 dir('app') {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         bat '''
-                            docker login -u %DOCKER_USER% -p %DOCKER_PASS%
-                            docker build -t %IMAGE_NAME% .
-                            docker tag %IMAGE_NAME% %DOCKER_HUB_REPO%:%DOCKER_TAG%
-                            docker push %DOCKER_HUB_REPO%:%DOCKER_TAG%
+                        docker login -u %DOCKER_USER% -p %DOCKER_PASS%
+                        docker build -t %IMAGE_NAME% .
+                        docker tag %IMAGE_NAME% %DOCKER_HUB_REPO%:%DOCKER_TAG%
+                        docker push %DOCKER_HUB_REPO%:%DOCKER_TAG%
                         '''
                     }
                 }
-            }
-        }
-
-        stage('Kubernetes Deployment') {
-            steps {
-                echo 'Deploying to Kubernetes...'
-                bat 'kubectl apply -f deployment.yaml'
             }
         }
     }
@@ -50,14 +43,14 @@ pipeline {
             script {
                 def buildStatus = currentBuild.result
                 def buildNumber = env.BUILD_NUMBER
-                def jobName     = env.JOB_NAME
+                def jobName = env.JOB_NAME
                 def consoleLink = "${env.BUILD_URL}/console"
 
                 def jsonBody = [
-                    status      : buildStatus,
-                    jobName     : jobName,
-                    buildNumber : buildNumber,
-                    consoleLink : consoleLink
+                    status: buildStatus,
+                    jobName: jobName,
+                    buildNumber: buildNumber,
+                    consoleLink: consoleLink
                 ]
 
                 withCredentials([string(credentialsId: 'jenkins-api-token', variable: 'JENKINS_API_TOKEN')]) {
