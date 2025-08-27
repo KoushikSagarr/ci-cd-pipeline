@@ -22,22 +22,12 @@ pipeline {
                     bat 'npm install'
                 }
             }
-            post {
-                success {
-                    bat "curl -X POST -H \"Content-Type: application/json\" -d \"{\\\"stageName\\\":\\\"Install Dependencies\\\"}\" ${env.BACKEND_URL}/api/pipeline-stage"
-                }
-            }
         }
 
         stage('Run Tests') {
             steps {
                 echo 'Running tests...'
                 echo 'No tests implemented yet.'
-            }
-            post {
-                success {
-                    bat "curl -X POST -H \"Content-Type: application/json\" -d \"{\\\"stageName\\\":\\\"Run Tests\\\"}\" ${env.BACKEND_URL}/api/pipeline-stage"
-                }
             }
         }
 
@@ -55,11 +45,6 @@ pipeline {
                     }
                 }
             }
-            post {
-                success {
-                    bat "curl -X POST -H \"Content-Type: application/json\" -d \"{\\\"stageName\\\":\\\"Docker Build & Push\\\"}\" ${env.BACKEND_URL}/api/pipeline-stage"
-                }
-            }
         }
     }
 
@@ -70,6 +55,7 @@ pipeline {
                 def buildNumber = env.BUILD_NUMBER
                 def jobName = env.JOB_NAME
                 def consoleLink = "${env.BUILD_URL}/console"
+                def gitCommitMessage = git.changelog()
 
                 def jsonBody = [
                     status: buildStatus,
