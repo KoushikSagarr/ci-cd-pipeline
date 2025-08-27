@@ -8,16 +8,8 @@ pipeline {
     }
 
     stages {
-        stage('Git Checkout') {
-            steps {
-                echo "Checking out Git repository..."
-                // This assumes your job is configured to checkout from a Git repo.
-            }
-        }
-        
         stage('Install Dependencies') {
             steps {
-                echo 'Installing dependencies...'
                 dir('app') {
                     bat 'npm install'
                 }
@@ -26,14 +18,12 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                echo 'Running tests...'
                 echo 'No tests implemented yet.'
             }
         }
 
         stage('Docker Build & Push') {
             steps {
-                echo 'Building and pushing Docker image...'
                 dir('app') {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         bat '''
@@ -55,7 +45,6 @@ pipeline {
                 def buildNumber = env.BUILD_NUMBER
                 def jobName = env.JOB_NAME
                 def consoleLink = "${env.BUILD_URL}/console"
-                def gitCommitMessage = git.changelog()
 
                 def jsonBody = [
                     status: buildStatus,
