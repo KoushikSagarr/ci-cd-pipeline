@@ -8,22 +8,42 @@ pipeline {
     }
 
     stages {
+        stage('Git Checkout') {
+            steps {
+                echo "Checking out Git repository..."
+                // This assumes your job is configured to checkout from a Git repo.
+            }
+        }
+        
         stage('Install Dependencies') {
             steps {
+                echo 'Installing dependencies...'
                 dir('app') {
                     bat 'npm install'
+                }
+            }
+            post {
+                success {
+                    bat "curl -X POST -H \"Content-Type: application/json\" -d \"{\\\"stageName\\\":\\\"Install Dependencies\\\"}\" ${env.BACKEND_URL}/api/pipeline-stage"
                 }
             }
         }
 
         stage('Run Tests') {
             steps {
+                echo 'Running tests...'
                 echo 'No tests implemented yet.'
+            }
+            post {
+                success {
+                    bat "curl -X POST -H \"Content-Type: application/json\" -d \"{\\\"stageName\\\":\\\"Run Tests\\\"}\" ${env.BACKEND_URL}/api/pipeline-stage"
+                }
             }
         }
 
         stage('Docker Build & Push') {
             steps {
+                echo 'Building and pushing Docker image...'
                 dir('app') {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         bat '''
@@ -33,6 +53,11 @@ pipeline {
                         docker push %DOCKER_HUB_REPO%:%DOCKER_TAG%
                         '''
                     }
+                }
+            }
+            post {
+                success {
+                    bat "curl -X POST -H \"Content-Type: application/json\" -d \"{\\\"stageName\\\":\\\"Docker Build & Push\\\"}\" ${env.BACKEND_URL}/api/pipeline-stage"
                 }
             }
         }
