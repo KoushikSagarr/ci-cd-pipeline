@@ -37,14 +37,14 @@ pipeline {
             }
         }
 
-        stage('Kubernetes Deployment') {
-            steps {
-                echo 'Deploying to Kubernetes...'
-                // This command applies the deployment.yaml file to the Kubernetes cluster
-                bat 'kubectl apply -f deployment.yaml --validate=false'
-            }
+stage('Kubernetes Deployment') {
+    steps {
+        echo 'Deploying to Kubernetes...'
+        withEnv(["KUBECONFIG=C:\\Users\\shado\\.kube\\config"]) {
+            bat 'kubectl apply -f deployment.yaml --validate=false'
         }
     }
+}
 
     post {
         always {
