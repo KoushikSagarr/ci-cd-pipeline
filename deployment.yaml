@@ -1,7 +1,3 @@
-# Kubernetes Manifest for CI/CD Dashboard
-
-# This section defines the Deployment for your application.
-# It ensures that a specified number of application replicas are running.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -9,7 +5,6 @@ metadata:
   labels:
     app: ci-cd-app
 spec:
-  # Run 2 replicas of your application for high availability
   replicas: 2
   selector:
     matchLabels:
@@ -21,31 +16,20 @@ spec:
     spec:
       containers:
         - name: ci-cd-app-container
-          # The Docker image from your DockerHub repository
-          # Replace 'your-dockerhub-username' with your actual username
-          image: koushiksagar/ci-cd-app:latest
-          # Always pull the latest image to ensure the newest build is deployed
+          image: your-dockerhub-username/ci-cd-app:latest
           imagePullPolicy: Always
           ports:
-            # Expose the container's internal port (where your Node.js app runs)
-            - containerPort: 4000
+            - containerPort: 4000   # backend port from your Node.js server
 ---
-# This section defines the Service for your application.
-# It exposes your application to a public port on your local machine.
 apiVersion: v1
 kind: Service
 metadata:
   name: ci-cd-app-service
 spec:
-  # The service type is NodePort, which exposes the service on each node's IP at a static port.
   type: NodePort
   selector:
     app: ci-cd-app
   ports:
-    - protocol: TCP
-      # The port the service will listen on
-      port: 4000
-      # The port the container is running on
-      targetPort: 4000
-      # The external port on your local machine to access the service
-      nodePort: 30080
+    - port: 4000        # service port
+      targetPort: 4000  # container port
+      nodePort: 30080   # external port (http://localhost:30080)
