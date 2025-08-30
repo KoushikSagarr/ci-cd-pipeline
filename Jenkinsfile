@@ -39,9 +39,9 @@ pipeline {
 
         stage('Kubernetes Deployment') {
             steps {
-                echo 'Deploying to Kubernetes using Jenkins Kubernetes Plugin...'
-                withKubeConfig([credentialsId: 'kubeconfig-cred', serverUrl: 'https://127.0.0.1:57358']) {
-                    bat 'kubectl apply -f deployment.yaml --validate=false'
+                echo 'Deploying to Kubernetes...'
+                withKubeConfig([credentialsId: 'kubeconfig-minikube']) {
+                    sh 'kubectl apply -f deployment.yaml --validate=false'
                 }
             }
         }
