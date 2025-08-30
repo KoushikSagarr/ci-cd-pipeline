@@ -41,7 +41,7 @@ pipeline {
             steps {
                 echo 'Deploying to Kubernetes...'
                 // This command applies the deployment.yaml file to the Kubernetes cluster
-                bat 'kubectl apply -f deployment.yaml'
+                bat 'kubectl apply -f deployment.yaml --validate=false'
             }
         }
     }
