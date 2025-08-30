@@ -37,14 +37,15 @@ pipeline {
             }
         }
 
-stage('Kubernetes Deployment') {
-    steps {
-        echo 'Deploying to Kubernetes...'
-        withEnv(["KUBECONFIG=C:\\Users\\shado\\.kube\\config"]) {
-            bat 'kubectl apply -f deployment.yaml --validate=false'
+        stage('Kubernetes Deployment') {
+            steps {
+                echo 'Deploying to Kubernetes using Jenkins Kubernetes Plugin...'
+                withKubeConfig([credentialsId: 'kubeconfig-cred', serverUrl: 'https://127.0.0.1:57358']) {
+                    bat 'kubectl apply -f deployment.yaml --validate=false'
+                }
+            }
         }
     }
-}
 
     post {
         always {
