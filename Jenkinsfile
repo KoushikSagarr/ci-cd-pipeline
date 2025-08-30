@@ -36,6 +36,14 @@ pipeline {
                 }
             }
         }
+
+        stage('Kubernetes Deployment') {
+            steps {
+                echo 'Deploying to Kubernetes...'
+                // This command applies the deployment.yaml file to the Kubernetes cluster
+                bat 'kubectl apply -f deployment.yaml'
+            }
+        }
     }
 
     post {
@@ -45,7 +53,7 @@ pipeline {
                 def buildNumber = env.BUILD_NUMBER
                 def jobName = env.JOB_NAME
                 def consoleLink = "${env.BUILD_URL}/console"
-
+                
                 def jsonBody = [
                     status: buildStatus,
                     jobName: jobName,
