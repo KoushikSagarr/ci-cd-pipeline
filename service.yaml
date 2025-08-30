@@ -7,6 +7,6 @@ spec:
   selector:
     app: ci-cd-app
   ports:
-    - port: 4000       # inside container
-      targetPort: 4000 # pod's app port
-      nodePort: 30800  # fixed NodePort on minikube
+    - port: 4000       # inside cluster
+      targetPort: 4000 # pod/container port
+      nodePort: 3000   # external port on localhost
