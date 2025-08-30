@@ -42,6 +42,7 @@ pipeline {
                 echo 'Deploying to Kubernetes...'
                 withKubeConfig([credentialsId: 'kubeconfig-minikube']) {
                     bat 'kubectl apply -f deployment.yaml --validate=false'
+                    bat 'kubectl apply -f service.yaml'
                 }
             }
         }
