@@ -6,7 +6,7 @@ pipeline {
         DOCKER_HUB_REPO = "koushiksagar/ci-cd-app"
         DOCKER_TAG = "latest"
         // Add your backend URL - replace with your actual ngrok URL or server URL
-        BACKEND_URL = "https://your-ngrok-url.ngrok-free.app"
+        BACKEND_URL = "https://b66c717ddeb9.ngrok-free.app"
     }
 
     stages {
