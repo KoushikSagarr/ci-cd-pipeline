@@ -37,16 +37,6 @@ pipeline {
             }
         }
 
-        stage('Kubernetes Deployment') {
-            steps {
-                echo 'Deploying to Kubernetes...'
-                withKubeConfig([credentialsId: 'kubeconfig-minikube']) {
-                    bat 'kubectl apply -f deployment.yaml --validate=false'
-                    bat 'kubectl apply -f service.yaml'
-                }
-            }
-        }
-    }
   stage('Kubernetes Deployment') {
     steps {
         script {
@@ -54,12 +44,10 @@ pipeline {
                 echo 'Checking Kubernetes connectivity...'
                 
                 withKubeConfig([credentialsId: 'kubeconfig-minikube']) {
-                    // Check if cluster is accessible
                     bat 'kubectl cluster-info --request-timeout=10s'
                     
                     echo 'Kubernetes cluster is accessible. Proceeding with deployment...'
                     
-                    // Apply deployment with better error handling
                     bat '''
                         echo "Applying Kubernetes deployment..."
                         kubectl apply -f deployment.yaml --validate=false
