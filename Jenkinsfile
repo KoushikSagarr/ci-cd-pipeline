@@ -42,7 +42,7 @@ pipeline {
             steps {
                 script {
                     echo "Deploying to Kubernetes using kubeconfig credentials..."
-                    withKubeConfig([credentialsId: 'kubeconfig-docker-desktop']) {
+                    withKubeConfig([credentialsId: 'kubeconfig-minikube']) {
                         try {
                             bat 'kubectl config current-context'
                             bat 'kubectl cluster-info --request-timeout=10s'
