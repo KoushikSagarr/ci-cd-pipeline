@@ -55,7 +55,7 @@ pipeline {
                             bat '''
                                 kubectl apply -f k8s/deployment.yaml -n ci-cd-app
                                 kubectl apply -f k8s/service.yaml -n ci-cd-app
-                                kubectl rollout status deployment/ci-cd-app-deployment -n ci-cd-app --timeout=300s
+                                kubectl rollout status deployment/ci-cd-app -n ci-cd-app --timeout=300s
                             '''
 
                             echo "Kubernetes deployment successful!"
