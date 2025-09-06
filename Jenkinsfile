@@ -5,8 +5,8 @@ pipeline {
         IMAGE_NAME = "ci-cd-app"
         DOCKER_HUB_REPO = "koushiksagar/ci-cd-app"
         DOCKER_TAG = "latest"
-        // Add your backend URL - replace with your actual ngrok URL or server URL
-        BACKEND_URL = "https://b66c717ddeb9.ngrok-free.app"
+        // Use environment variable for backend URL - set this in Jenkins global env or system env
+        BACKEND_URL = "${env.BACKEND_URL ?: 'http://localhost:3001'}"
     }
 
     stages {
@@ -21,6 +21,10 @@ pipeline {
         stage('Run Tests') {
             steps {
                 echo 'No tests implemented yet.'
+                // TODO: Add your test commands here when ready
+                // dir('app') {
+                //     bat 'npm test'
+                // }
             }
         }
 
@@ -42,72 +46,62 @@ pipeline {
         stage('Kubernetes Deployment') {
             steps {
                 script {
+                    echo "Switching to Docker Desktop Kubernetes context..."
+                    
                     try {
-                        echo 'Checking Kubernetes connectivity...'
+                        // Switch to docker-desktop context (no credentials needed for local)
+                        bat 'kubectl config use-context docker-desktop'
                         
-                        withKubeConfig([credentialsId: 'kubeconfig-minikube']) {
-                            bat 'kubectl cluster-info --request-timeout=10s'
-                            
-                            echo 'Kubernetes cluster is accessible. Proceeding with deployment...'
-                            
-                            bat '''
-                                echo "Applying Kubernetes deployment..."
-                                kubectl apply -f deployment.yaml --validate=false
-                                
-                                echo "Waiting for deployment to be ready..."
-                                kubectl wait --for=condition=available --timeout=300s deployment/ci-cd-app-deployment
-                                
-                                echo "Checking deployment status..."
-                                kubectl get deployments
-                                kubectl get pods -l app=ci-cd-app
-                                kubectl get services
-                                
-                                echo "Deployment completed successfully!"
-                            '''
-                        }
+                        // Verify connectivity
+                        bat 'kubectl cluster-info --request-timeout=10s'
+                        bat 'kubectl get nodes'
                         
-                        // Optional: Get the NodePort URL for Minikube
-                        script {
-                            try {
-                                def minikubeUrl = bat(
-                                    script: 'minikube service ci-cd-app-service --url',
-                                    returnStdout: true
-                                ).trim()
-                                echo "Application accessible at: ${minikubeUrl}"
-                            } catch (Exception e) {
-                                echo "Could not get Minikube service URL: ${e.getMessage()}"
-                                echo "You can access the app using: kubectl port-forward service/ci-cd-app-service 4000:4000"
-                            }
-                        }
+                        echo "Applying Kubernetes manifests..."
+                        
+                        // Create namespace if it doesn't exist
+                        bat 'kubectl create namespace ci-cd-app --dry-run=client -o yaml | kubectl apply -f -'
+                        
+                        // Apply deployments
+                        bat '''
+                            kubectl apply -f k8s/deployment.yaml -n ci-cd-app
+                            kubectl apply -f k8s/service.yaml -n ci-cd-app
+                            kubectl rollout status deployment/ci-cd-app-deployment -n ci-cd-app --timeout=300s
+                        '''
+                        
+                        echo "Kubernetes deployment successful!"
+                        // Get service info
+                        bat 'kubectl get services ci-cd-app-service -n ci-cd-app'
+                        bat 'kubectl get pods -n ci-cd-app -l app=ci-cd-app'
+                        
+                        // Show service URL
+                        echo "Application should be accessible via: http://localhost (if using LoadBalancer)"
                         
                     } catch (Exception e) {
-                        currentBuild.result = 'UNSTABLE'
                         echo "Kubernetes deployment failed: ${e.getMessage()}"
-                        
-                        // Provide troubleshooting information
-                        echo "Troubleshooting steps:"
-                        echo "1. Check if Minikube is running: minikube status"
-                        echo "2. Start Minikube if needed: minikube start"
-                        echo "3. Verify kubectl context: kubectl config current-context"
-                        echo "4. Check cluster info: kubectl cluster-info"
-                        
-                        // Try to get more diagnostic info
-                        try {
-                            withKubeConfig([credentialsId: 'kubeconfig-minikube']) {
-                                bat 'kubectl config view --minify'
-                                bat 'kubectl get nodes'
-                            }
-                        } catch (Exception diagError) {
-                            echo "Could not get diagnostic info: ${diagError.getMessage()}"
-                        }
-                        
-                        // Don't fail the entire build, just mark as unstable
+                        currentBuild.result = 'UNSTABLE'
                         echo "Continuing build despite Kubernetes deployment issues"
+                        
+                        // Enhanced troubleshooting
+                        echo "=== TROUBLESHOOTING INFO ==="
+                        echo "1. Ensure Docker Desktop is running"
+                        echo "2. Enable Kubernetes in Docker Desktop Settings"
+                        echo "3. Wait for Kubernetes to fully start (green indicator)"
+                        
+                        try {
+                            echo "Available contexts:"
+                            bat 'kubectl config get-contexts'
+                            echo "Current context:"
+                            bat 'kubectl config current-context'
+                            echo "Docker status:"
+                            bat 'docker version --format "Client: {{.Client.Version}}, Server: {{.Server.Version}}"'
+                        } catch (Exception diagEx) {
+                            echo "Could not get diagnostic info: ${diagEx.getMessage()}"
+                        }
                     }
                 }
             }
         }
-    } // This closing brace was missing!
+    }
 
     post {
         always {
@@ -155,7 +149,8 @@ pipeline {
                     commitMessage: commitMessage,
                     duration: duration,
                     errorDetails: errorDetails,
-                    timestamp: new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'")
+                    timestamp: new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'"),
+                    kubernetesDeployed: buildStatus in ['SUCCESS', 'UNSTABLE']
                 ]
 
                 withCredentials([string(credentialsId: 'jenkins-api-token', variable: 'JENKINS_API_TOKEN')]) {
@@ -171,13 +166,15 @@ pipeline {
                             customHeaders: [
                                 [name: 'Authorization', value: "Bearer ${JENKINS_API_TOKEN}"]
                             ],
-                            validResponseCodes: '100:399'
+                            validResponseCodes: '100:399',
+                            timeout: 30
                         )
                         echo "Successfully sent build status to backend. Response: ${response.status}"
                     } catch (Exception e) {
                         echo "Failed to send build status to backend: ${e.getMessage()}"
                         echo "Check if backend server is running and BACKEND_URL is correct"
                         echo "Current BACKEND_URL: ${env.BACKEND_URL}"
+                        echo "To set BACKEND_URL: Go to Jenkins > Manage Jenkins > Configure System > Environment variables"
                     }
                 }
             }
@@ -185,6 +182,7 @@ pipeline {
         
         success {
             echo "Build completed successfully!"
+            echo "Application deployed to Kubernetes cluster"
         }
         
         failure {
@@ -193,6 +191,7 @@ pipeline {
         
         unstable {
             echo "Build completed with warnings or non-critical failures."
+            echo "Docker image pushed successfully, but Kubernetes deployment may have issues"
         }
     }
 }
