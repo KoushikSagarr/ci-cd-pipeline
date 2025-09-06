@@ -1,32 +1,60 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ci-cd-dashboard-deployment
+  name: ci-cd-app-deployment
+  labels:
+    app: ci-cd-app
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ci-cd-dashboard
+      app: ci-cd-app
   template:
     metadata:
       labels:
-        app: ci-cd-dashboard
+        app: ci-cd-app
     spec:
       containers:
-      - name: ci-cd-dashboard-app
+      - name: ci-cd-app
         image: koushiksagar/ci-cd-app:latest
         ports:
         - containerPort: 4000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 4000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 4000
+          initialDelaySeconds: 5
+          periodSeconds: 5
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: ci-cd-dashboard-service
+  name: ci-cd-app-service
+  labels:
+    app: ci-cd-app
 spec:
+  type: NodePort
   selector:
-    app: ci-cd-dashboard
+    app: ci-cd-app  # This now matches the deployment labels
   ports:
-    - protocol: TCP
-      port: 80
+    - name: http
+      port: 4000
       targetPort: 4000
-  type: LoadBalancer
+      nodePort: 30080
+      protocol: TCP
