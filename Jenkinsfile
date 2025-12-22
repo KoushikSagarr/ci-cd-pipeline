@@ -10,7 +10,6 @@ pipeline {
         IMAGE_NAME = "ci-cd-app"
         DOCKER_HUB_REPO = "koushiksagar/ci-cd-app"
         DOCKER_TAG = "latest"
-        BACKEND_URL = "${env.BACKEND_URL ?: 'http://localhost:3001'}"
     }
 
     stages {
@@ -198,21 +197,43 @@ pipeline {
                     chaosTestRan: chaosTestRan
                 ]
 
-                withCredentials([string(credentialsId: 'jenkins-api-token', variable: 'JENKINS_API_TOKEN')]) {
-                    try {
-                        httpRequest(
-                            url: "${env.BACKEND_URL}/api/log-final-status",
-                            httpMode: 'POST',
-                            contentType: 'APPLICATION_JSON',
-                            requestBody: groovy.json.JsonOutput.toJson(jsonBody),
-                            customHeaders: [[name: 'Authorization', value: "Bearer ${JENKINS_API_TOKEN}"]],
-                            validResponseCodes: '100:399',
-                            timeout: 30
-                        )
-                        echo "Build status sent successfully to backend."
-                    } catch (Exception e) {
-                        echo "Failed to send build status to backend: ${e.getMessage()}"
+                // Fetch ngrok URL dynamically from ngrok inspector API
+                def backendUrl = ""
+                try {
+                    def ngrokResponse = bat(
+                        script: 'powershell -Command "(Invoke-WebRequest -Uri \'http://localhost:4040/api/tunnels\' -UseBasicParsing).Content"',
+                        returnStdout: true
+                    ).trim()
+                    def jsonSlurper = new groovy.json.JsonSlurper()
+                    def ngrokData = jsonSlurper.parseText(ngrokResponse.substring(ngrokResponse.indexOf('{')))
+                    if (ngrokData.tunnels && ngrokData.tunnels.size() > 0) {
+                        backendUrl = ngrokData.tunnels[0].public_url
+                        echo "Discovered ngrok URL: ${backendUrl}"
                     }
+                } catch (Exception e) {
+                    echo "Could not fetch ngrok URL: ${e.getMessage()}"
+                    backendUrl = "http://localhost:3001"
+                }
+
+                if (backendUrl) {
+                    withCredentials([string(credentialsId: 'jenkins-api-token', variable: 'JENKINS_API_TOKEN')]) {
+                        try {
+                            httpRequest(
+                                url: "${backendUrl}/api/log-final-status",
+                                httpMode: 'POST',
+                                contentType: 'APPLICATION_JSON',
+                                requestBody: groovy.json.JsonOutput.toJson(jsonBody),
+                                customHeaders: [[name: 'Authorization', value: "Bearer ${JENKINS_API_TOKEN}"]],
+                                validResponseCodes: '100:399',
+                                timeout: 30
+                            )
+                            echo "Build status sent successfully to backend at ${backendUrl}"
+                        } catch (Exception e) {
+                            echo "Failed to send build status to backend: ${e.getMessage()}"
+                        }
+                    }
+                } else {
+                    echo "No backend URL available, skipping build status notification"
                 }
             }
         }
