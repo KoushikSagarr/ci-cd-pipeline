@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    parameters {
+        booleanParam(name: 'RUN_CHAOS_TEST', defaultValue: false, description: 'Run Chaos Engineering tests after deployment')
+        booleanParam(name: 'SKIP_SECURITY_SCAN', defaultValue: false, description: 'Skip security scans (SAST and Container Scan)')
+    }
+
     environment {
         IMAGE_NAME = "ci-cd-app"
         DOCKER_HUB_REPO = "koushiksagar/ci-cd-app"
@@ -17,19 +22,62 @@ pipeline {
             }
         }
 
-        stage('Run Tests') {
+        stage('Security: SAST') {
+            when {
+                expression { return !params.SKIP_SECURITY_SCAN }
+            }
             steps {
-                echo 'No tests implemented yet.'
+                dir('app') {
+                    echo 'Running npm audit for dependency vulnerabilities...'
+                    bat 'npm audit --audit-level=high || exit 0'
+                    
+                    echo 'Running ESLint security analysis...'
+                    bat 'npx eslint . --ext .js --config .eslintrc.json || exit 0'
+                }
             }
         }
 
-        stage('Docker Build & Push') {
+        stage('Run Tests') {
+            steps {
+                dir('app') {
+                    bat 'npm test'
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                dir('app') {
+                    bat 'docker build -t %IMAGE_NAME% .'
+                }
+            }
+        }
+
+        stage('Security: Container Scan') {
+            when {
+                expression { return !params.SKIP_SECURITY_SCAN }
+            }
+            steps {
+                script {
+                    echo 'Scanning container image with Trivy for vulnerabilities...'
+                    def result = bat(
+                        script: 'C:\\Tools\\Trivy\\trivy.exe image --severity CRITICAL --exit-code 1 %IMAGE_NAME%',
+                        returnStatus: true
+                    )
+                    if (result != 0) {
+                        error("CRITICAL vulnerabilities found in container image! Blocking deployment.")
+                    }
+                    echo 'Container scan passed - no CRITICAL vulnerabilities found.'
+                }
+            }
+        }
+
+        stage('Docker Push') {
             steps {
                 dir('app') {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         bat '''
                         docker login -u %DOCKER_USER% -p %DOCKER_PASS%
-                        docker build -t %IMAGE_NAME% .
                         docker tag %IMAGE_NAME% %DOCKER_HUB_REPO%:%DOCKER_TAG%
                         docker push %DOCKER_HUB_REPO%:%DOCKER_TAG%
                         '''
@@ -65,6 +113,32 @@ pipeline {
                             echo "Kubernetes deployment failed: ${e.getMessage()}"
                             currentBuild.result = 'UNSTABLE'
                             echo "Continuing build despite Kubernetes deployment issues"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Chaos Test') {
+            when {
+                expression { return params.RUN_CHAOS_TEST }
+            }
+            steps {
+                script {
+                    echo "Running Chaos Engineering experiment..."
+                    withKubeConfig([credentialsId: 'kubeconfig-minikube']) {
+                        try {
+                            bat 'kubectl apply -f k8s/chaos-experiment.yaml -n ci-cd-app'
+                            echo "Chaos experiment applied. Waiting for 45 seconds for experiment completion..."
+                            bat 'ping -n 46 127.0.0.1 > nul'
+                            
+                            echo "Verifying application recovery..."
+                            bat 'kubectl get pods -n ci-cd-app -l app=ci-cd-app'
+                            bat 'kubectl rollout status deployment/ci-cd-app -n ci-cd-app --timeout=60s'
+                            echo "Application recovered successfully from chaos test!"
+                        } catch (Exception e) {
+                            echo "Chaos test warning: ${e.getMessage()}"
+                            echo "Note: Chaos Mesh may not be installed in the cluster"
                         }
                     }
                 }
@@ -106,6 +180,10 @@ pipeline {
                     }
                 }
 
+                // Security scan results summary
+                def securityScanSkipped = params.SKIP_SECURITY_SCAN ?: false
+                def chaosTestRan = params.RUN_CHAOS_TEST ?: false
+
                 def jsonBody = [
                     status: buildStatus,
                     jobName: jobName,
@@ -115,7 +193,9 @@ pipeline {
                     duration: duration,
                     errorDetails: errorDetails,
                     timestamp: new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'"),
-                    kubernetesDeployed: buildStatus in ['SUCCESS', 'UNSTABLE']
+                    kubernetesDeployed: buildStatus in ['SUCCESS', 'UNSTABLE'],
+                    securityScanSkipped: securityScanSkipped,
+                    chaosTestRan: chaosTestRan
                 ]
 
                 withCredentials([string(credentialsId: 'jenkins-api-token', variable: 'JENKINS_API_TOKEN')]) {
