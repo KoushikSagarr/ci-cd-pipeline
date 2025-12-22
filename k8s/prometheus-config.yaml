@@ -1,0 +1,36 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ci-cd-app-monitor
+  namespace: ci-cd-app
+  labels:
+    app: ci-cd-app
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: ci-cd-app
+  namespaceSelector:
+    matchNames:
+      - ci-cd-app
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ci-cd-app-metrics
+  namespace: ci-cd-app
+  labels:
+    app: ci-cd-app
+spec:
+  selector:
+    app: ci-cd-app
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP

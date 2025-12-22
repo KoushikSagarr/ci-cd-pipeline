@@ -1,0 +1,17 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: pod-failure-test
+  namespace: ci-cd-app
+  labels:
+    app: ci-cd-app
+    experiment: pod-failure
+spec:
+  action: pod-failure
+  mode: one
+  selector:
+    namespaces:
+      - ci-cd-app
+    labelSelectors:
+      app: ci-cd-app
+  duration: "30s"
