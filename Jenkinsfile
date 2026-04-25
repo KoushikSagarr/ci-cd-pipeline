@@ -47,7 +47,7 @@ pipeline {
         stage('Docker Build') {
             steps {
                 dir('app') {
-                    bat 'docker build -t %IMAGE_NAME% .'
+                    bat 'docker build --no-cache -t %IMAGE_NAME% .'
                 }
             }
         }
